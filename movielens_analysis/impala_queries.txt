@@ -1,0 +1,158 @@
+1.JOINING MOVIE AND RATINGS TABLE:
+
+create table movieanalysis row format delimited fields terminated by "," 
+as select rating.movieid,rating.userid,rating.rating,movie.title,movie.genres from rating
+join movie
+on rating.movieid=movie.movieid
+
+2.TOP 10 RATED MOVIES BY USERS:
+Select movieid,count(rating) as count_rating,title,genres from movieanalysis
+group by movieid,title,genres
+order by count_rating desc
+limit 10
+
+3.TOP 10 MOVIES HAVING HIGH RATING BY USERS:
+
+Select movieid,sum(rating) as sum_rating,title,genres from movieanalysis
+group by movieid,title,genres
+order by sum_rating desc
+limit 10
+
+4.JOINING MOVIE,RATINGS AND TAGS TABLE:
+create table movieanalysis1 row format delimited fields terminated by "," 
+as select movieanalysis.movieid,movieanalysis.userid,movieanalysis.rating,movieanalysis.title,movieanalysis.genres,tag.tag from movieanalysis
+join tag
+on movieanalysis.movieid=tag.movieid and movieanalysis.userid=tag.userid
+
+5.WORST 10 MOVIES HAVING LOW RATING BY USERS:
+Select movieid,sum(rating) as sum_rating,title,genres from movieanalysis
+group by movieid,title,genres
+order by sum_rating asc
+limit 10
+
+6.TOP RATED MOVIES IN THE YEAR 1995:
+Select movieid,sum(rating) as sum_rating,title,genres from movieanalysis
+where title like '%1995%'
+group by movieid,title,genres
+order by sum_rating desc
+limit 10
+
+7.MARKETING ANALYSIS:
+create table movie_sentiment row format delimited fields terminated by "," as select *,
+case
+       WHEN rating>=4 THEN 'excellent'
+       WHEN rating>=3 and rating< 4 THEN 'good'
+       WHEN rating>=2 and rating< 3 THEN 'one time watch'
+       WHEN rating>=1 and rating< 2 THEN 'poor'
+       WHEN rating<1 THEN 'worst'
+       ELSE 'under review'
+end as sentiment
+from movieanalysis1;
+
+8.TOP RATED MOVIES FROM 'ADVENTURE' GENRE:
+Select movieid,sum(rating) as sum_rating,title,genres from movieanalysis
+where genres like '%Adventure%'
+group by movieid,title,genres
+order by sum_rating desc
+limit 10;
+
+9.COUNT OF MOVIES IN EACH SENTIMENT CATEGORY:
+Select sentiment,count(sentiment) as count_sent,sum(rating) as sum_rating from movie_sentiment
+group by sentiment
+order by sum_rating desc
+limit 10;
+
+10.TAGS IN THE MOVIES OF 21st Century and genres is 'Crime'
+Select movieid,sum(rating) as sum_rating,title,genres,tag from movie_sentiment
+where title like '20%' and genres like '%Crime%'
+group by movieid,title,genres,tag
+order by sum_rating desc
+limit 10
+
+11.SANKEY DIAGRAM
+select title,sentiment,sum(rating) as sum_ratings from movie_sentiment
+where genres like '%Crime|Drama%'
+group by title,sentiment
+
+12.DONUT CHART
+select sentiment,sum(rating) as sum_ratings from movie_sentiment
+group by sentiment
+
+13.YEAR ANALYSIS
+create table mix row format delimited fields terminated by "," as
+SELECT r.userid,m.movieid,substr(m.title,1,length(m.title)-7) as title,
+       substr(m.title,length(m.title)-4,4) as year, m.genres,r.rating
+FROM rating r
+JOIN movie m
+ON r.movieid=m.movieid;
+
+14.getting year having 1 or 2 as starting elements.
+select sum(rating) as sum_rating,year from mix
+where year rlike '1.+|2.+'
+group by year
+
+15.Removing unwanted rows.
+select * from yearwise1
+where year1 not like '[a-z]|)%'
+
+16.Getting the movie rated by a particular user.
+Select movieid,rating,title,genres,tag,sentiment from movie_sentiment where userid=21
+
+17.Getting the users rating a particular movie.
+Select userid,rating,title,genres,tag,sentiment from movie_sentiment where movieid=441
+
+18.Table of users:
+CREATE TABLE users row format delimited fields terminated by "," as
+SELECT DISTINCT UserID
+FROM ratings;
+
+19.Table containing average rating of movie.
+CREATE TABLE f_m row format delimited fields terminated by "," as
+SELECT movieid,avg(rating) AS avg_rating
+FROM rating
+GROUP BY movieid
+ORDER BY avg_rating desc;
+
+20.list of top 5 movies not seen by each user:
+SELECT userid,movieid
+FROM
+(
+SELECT userid,movieid,row_number() OVER (PARTITION BY userid ORDER BY avg_rating DESC) AS rank
+ FROM
+ (
+ SELECT ufm.*
+  FROM
+  (
+  SELECT *
+   FROM users
+   CROSS JOIN f_m
+  ) ufm
+  LEFT OUTER JOIN rating r
+  ON ufm.movieid=r.movieid AND ufm.userid=r.userid
+  WHERE r.movieid IS NULL 
+ ) x
+) y
+WHERE rank<=5;
+
+21.get positively rated movies by UserID
+CREATE TABLE sorted row format delimited fields terminated by "," as
+SELECT userid,movieid
+FROM rating
+WHERE rating>=3.0; --condition for movie to be considered positively rated by user
+
+22.
+SELECT m1,m2
+FROM
+(
+ SELECT m1,m2,row_number() OVER (PARTITION BY m1 ORDER BY cnt DESC) AS rank
+ FROM
+ (
+  SELECT s1.movieID AS m1,s2.movieid AS m2,COUNT(*) AS cnt
+  FROM sorted s1
+  JOIN sorted s2
+  ON s1.userid=s2.userid
+  WHERE s1.movieid=s2.movieid
+  GROUP BY s1.movieid,s2.movieid
+ ) x
+) y
+WHERE rank<=5;
