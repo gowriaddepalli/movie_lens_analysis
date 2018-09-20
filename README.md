@@ -1,2 +1,2 @@
-# movie_lens_analysis
-mini project for big data elective in final year using cloudera hadoop's framework with pig ,hive and data visualization with tableau connected to hadoop with hive odbc driver.
++ A Big Data Course Mini-project: built descriptive analytics based reports, dashboards and visualizations for managers using tools like hdfs, hive and pig from Hadoop framework and tableau.
++ Built collaborative filtering based movie recommender system for customers using R and shinyUI
